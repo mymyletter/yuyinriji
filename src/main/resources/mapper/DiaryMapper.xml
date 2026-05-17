@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "
+-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.yuyinriji.mapper.DiaryMapper">
+
+    <!-- 插入日记数据 -->
+    <insert id="insert" parameterType="com.example.yuyinriji.entity.Diary">
+        INSERT INTO diary (user_id, content, audio_url, emotion, create_time)
+        VALUES (#{userId}, #{content}, #{audioUrl}, #{emotion}, #{createTime})
+    </insert>
+
+    <!-- 根据用户ID查询所有日记 -->
+    <select id="selectByUserId" parameterType="int" resultType="com.example.yuyinriji.entity.Diary">
+        SELECT * FROM diary WHERE user_id = #{userId} ORDER BY create_time DESC
+    </select>
+
+    <!-- 根据ID查询单条日记 -->
+    <select id="selectById" parameterType="int" resultType="com.example.yuyinriji.entity.Diary">
+        SELECT * FROM diary WHERE id = #{id}
+    </select>
+
+    <!-- 更新日记内容和情绪 -->
+    <update id="update" parameterType="com.example.yuyinriji.entity.Diary">
+        UPDATE diary
+        SET content = #{content}, emotion = #{emotion}
+        WHERE id = #{id}
+    </update>
+
+    <!-- 根据ID和用户ID删除日记（防止跨用户删除） -->
+    <delete id="deleteByIdAndUserId">
+        DELETE FROM diary WHERE id = #{id} AND user_id = #{userId}
+    </delete>
+</mapper>

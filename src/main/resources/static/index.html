@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>左耳 - 语音日记首页</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: "Microsoft Yahei", sans-serif;
+        }
+        body {
+            background: #f5f5f5;
+            min-height: 100vh;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .header h1 {
+            font-size: 24px;
+        }
+        .logout {
+            color: white;
+            text-decoration: none;
+            font-size: 14px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 40px auto;
+            padding: 0 20px;
+        }
+        .welcome {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            margin-bottom: 30px;
+        }
+        .welcome h2 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+        .welcome p {
+            color: #666;
+            font-size: 14px;
+        }
+        .feature-card {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            text-align: center;
+            cursor: pointer;
+            transition: transform 0.3s;
+        }
+        .feature-card:hover {
+            transform: translateY(-5px);
+        }
+        .feature-card h3 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+        .feature-card p {
+            color: #666;
+            font-size: 14px;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+    </style>
+</head>
+<body>
+<div class="header">
+    <h1>左耳 · 语音日记</h1>
+    <a href="login.html" class="logout">退出登录</a>
+</div>
+<div class="container">
+    <div class="welcome">
+        <h2>欢迎回来，<span id="username">用户</span>！</h2>
+        <p>记录你的情绪，倾听内心的声音</p>
+    </div>
+    <div class="grid">
+        <div class="feature-card" onclick="window.location.href='diary.html'">
+            <h3>语音日记</h3>
+            <p>用声音记录生活，自动识别情绪</p>
+        </div>
+        <div class="feature-card" onclick="window.location.href='emotion.html'">
+            <h3>情绪追踪</h3>
+            <p>查看你的情绪变化，生成分析报告</p>
+        </div>
+        <div class="feature-card" onclick="window.location.href='profile.html'">
+            <h3>个人中心</h3>
+            <p>管理你的账号，设置偏好</p>
+        </div>
+    </div>
+</div>
+
+<script>
+    const username = localStorage.getItem('username');
+    const userId = localStorage.getItem('userId');
+    if (username) {
+        document.getElementById('username').textContent = username;
+    }
+    if (!userId) {
+        window.location.href = 'login.html';
+    }
+</script>
+</body>
+</html>

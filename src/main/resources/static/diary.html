@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>左耳 - 语音日记</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: "Microsoft Yahei", sans-serif;
+        }
+        body {
+            background: #f5f5f5;
+            min-height: 100vh;
+        }
+        .header {
+            background: #667eea;
+            color: white;
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .header a {
+            color: white;
+            text-decoration: none;
+            font-size: 16px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 40px auto;
+            padding: 0 20px;
+        }
+        .record-box {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            margin-bottom: 30px;
+        }
+        h2 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+        .btn-record {
+            padding: 12px 24px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-right: 10px;
+        }
+        .btn-record:hover {
+            background: #5568d3;
+        }
+        #audioPlay {
+            margin-top: 20px;
+        }
+        #diaryForm {
+            margin-top: 20px;
+        }
+        .input-group {
+            margin-bottom: 20px;
+            color: #666;
+            font-size: 14px;
+        }
+        .input-group label {
+            display: block;
+            margin-bottom: 8px;
+        }
+        .input-group textarea {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            resize: vertical;
+            min-height: 120px;
+        }
+        .input-group select {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+        .diary-list {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        }
+        .diary-item {
+            border-bottom: 1px solid #eee;
+            padding: 20px 0;
+        }
+        .diary-item:last-child {
+            border: none;
+        }
+        .diary-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .emotion-tag {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            color: white;
+            margin-left: 10px;
+        }
+        .emotion-happy {
+            background: #2ed573;
+        }
+        .emotion-sad {
+            background: #ff4757;
+        }
+        .emotion-anxious {
+            background: #ffa502;
+        }
+        .emotion-calm {
+            background: #1e90ff;
+        }
+        .diary-time {
+            color: #999;
+            font-size: 12px;
+        }
+        .diary-content {
+            color: #333;
+            line-height: 1.6;
+            margin: 10px 0;
+        }
+        .delete-btn {
+            color: #ff4757;
+            border: none;
+            background: none;
+            cursor: pointer;
+            font-size: 14px;
+            margin-top: 10px;
+        }
+        .delete-btn:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+<div class="header">
+    <h1>左耳 · 语音日记</h1>
+    <a href="index.html">返回首页</a>
+</div>
+<div class="container">
+    <div class="record-box">
+        <h2>记录新日记</h2>
+        <button class="btn-record" id="recordBtn">开始录音</button>
+        <button class="btn-record" id="stopBtn" style="display: none;">停止录音</button>
+        <span id="recordStatus" style="color:#999;font-size:14px;margin-left:10px;"></span>
+
+        <div id="audioPlay"></div>
+
+        <form id="diaryForm" style="display: none;">
+            <div class="input-group">
+                <label>日记内容（语音转文字/手动输入）</label>
+                <textarea id="content" placeholder="写下你的心情..."></textarea>
+            </div>
+            <div class="input-group">
+                <label>选择情绪</label>
+                <select id="emotion">
+                    <option value="开心">开心 😊</option>
+                    <option value="难过">难过 😔</option>
+                    <option value="焦虑">焦虑 😰</option>
+                    <option value="平静">平静 😌</option>
+                </select>
+            </div>
+            <button type="submit" class="btn-record">保存日记</button>
+        </form>
+    </div>
+
+    <div class="diary-list">
+        <h2>我的日记</h2>
+        <div id="diaryList"></div>
+    </div>
+</div>
+
+<script>
+    const userId = localStorage.getItem("userId");
+    if (!userId) {
+        window.location.href = 'login.html';
+        throw new Error('未登录，跳转到登录页');
+    }
+    const username = localStorage.getItem("username") || '用户';
+    let mediaRecorder;
+    let audioChunks = [];
+    let audioBlob;
+    let isRecording = false;
+
+    const statusEl = document.getElementById('recordStatus');
+
+    function log(step, detail) {
+        const ts = new Date().toISOString().split('T')[1].slice(0, 12);
+        console.log(`[录音 ${ts}] ${step}`, detail || '');
+    }
+
+    function setStatus(text, color) {
+        if (statusEl) {
+            statusEl.textContent = text;
+            statusEl.style.color = color || '#999';
+        }
+    }
+
+    // 开始录音
+    document.getElementById('recordBtn').addEventListener('click', async () => {
+        if (isRecording) {
+            log('WARN', '已经在录音中，忽略重复点击');
+            return;
+        }
+        try {
+            setStatus('正在请求麦克风权限...', '#999');
+            log('请求麦克风权限...');
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            log('权限已获取', `音频轨: ${stream.getAudioTracks().length} 条`);
+
+            // 优先 webm，不支持则降级
+            let mimeType = 'audio/webm';
+            if (!MediaRecorder.isTypeSupported('audio/webm')) {
+                mimeType = 'audio/mp4';
+                log('降级MIME', mimeType);
+                if (!MediaRecorder.isTypeSupported(mimeType)) {
+                    mimeType = '';
+                    log('降级MIME', '使用浏览器默认格式');
+                }
+            }
+
+            const options = mimeType ? { mimeType } : {};
+            mediaRecorder = new MediaRecorder(stream, options);
+            audioChunks = [];
+            log('MediaRecorder创建', `state=${mediaRecorder.state}, mimeType=${mimeType || 'default'}`);
+
+            mediaRecorder.ondataavailable = (e) => {
+                log('收到数据块', `size=${e.data.size} bytes`);
+                if (e.data.size > 0) {
+                    audioChunks.push(e.data);
+                    setStatus(`🔴 录音中... 已录制 ${audioChunks.length} 个数据块`, '#667eea');
+                }
+            };
+
+            mediaRecorder.onstop = () => {
+                log('录音停止', `共收到 ${audioChunks.length} 个数据块`);
+                const totalSize = audioChunks.reduce((s, c) => s + c.size, 0);
+                log('总数据大小', `${totalSize} bytes`);
+
+                if (audioChunks.length === 0 || totalSize === 0) {
+                    log('ERROR', '录音数据为空！可能原因：录音时间太短、浏览器不支持该格式、或麦克风未捕获到声音');
+                    setStatus('⚠️ 录音数据为空，请至少录制1秒以上', '#ff4757');
+                    alert('录音数据为空，请确认麦克风正常工作并至少录制1秒以上');
+                    return;
+                }
+
+                audioBlob = new Blob(audioChunks, { type: mimeType || 'audio/webm' });
+                log('Blob创建', `size=${audioBlob.size} bytes, type=${audioBlob.type}`);
+                const audioUrl = URL.createObjectURL(audioBlob);
+                document.getElementById('audioPlay').innerHTML = `
+                    <audio controls src="${audioUrl}" style="width: 100%;"></audio>
+                `;
+                document.getElementById('diaryForm').style.display = 'block';
+                setStatus(`✅ 录音完成，${(audioBlob.size / 1024).toFixed(1)} KB，可预览播放`, '#2ed573');
+            };
+
+            mediaRecorder.onerror = (err) => {
+                log('ERROR', `MediaRecorder错误: ${err.error?.message || JSON.stringify(err)}`);
+                setStatus('❌ 录音出错，请重试', '#ff4757');
+                alert('录音过程出错，请重试');
+                resetUI();
+            };
+
+            // timeslice=1000 每秒触发一次 ondataavailable，避免数据全部堆到最后
+            mediaRecorder.start(1000);
+            isRecording = true;
+            setStatus('🔴 录音中...', '#667eea');
+            log('开始录音', `timeslice=1000ms`);
+
+            document.getElementById('recordBtn').style.display = 'none';
+            document.getElementById('stopBtn').style.display = 'inline-block';
+        } catch (err) {
+            log('ERROR', `getUserMedia失败: ${err.name} - ${err.message}`);
+            setStatus('❌ 录音启动失败', '#ff4757');
+            if (err.name === 'NotAllowedError') {
+                alert('麦克风权限被拒绝，请在浏览器设置中允许访问麦克风后重试');
+            } else if (err.name === 'NotFoundError') {
+                alert('未检测到麦克风设备，请插入麦克风后重试');
+            } else {
+                alert(`无法启动录音: ${err.message}`);
+            }
+        }
+    });
+
+    // 停止录音
+    document.getElementById('stopBtn').addEventListener('click', () => {
+        if (!mediaRecorder || mediaRecorder.state !== 'recording') {
+            log('WARN', `无法停止，当前状态: ${mediaRecorder?.state || 'null'}`);
+            return;
+        }
+        setStatus('正在停止录音...', '#999');
+        log('用户点击停止录音', `当前state=${mediaRecorder.state}`);
+
+        // stop() 会异步触发 ondataavailable 和 onstop，必须在 onstop 中处理数据
+        mediaRecorder.stop();
+        // 停掉麦克风流，在 stop() 之后调用是安全的
+        mediaRecorder.stream.getTracks().forEach(track => track.stop());
+        isRecording = false;
+
+        document.getElementById('stopBtn').style.display = 'none';
+        document.getElementById('recordBtn').style.display = 'inline-block';
+    });
+
+    function resetUI() {
+        isRecording = false;
+        setStatus('', '#999');
+        document.getElementById('stopBtn').style.display = 'none';
+        document.getElementById('recordBtn').style.display = 'inline-block';
+    }
+
+    // 提交日记
+    document.getElementById('diaryForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const formData = new FormData();
+        formData.append('userId', userId);
+        formData.append('content', document.getElementById('content').value);
+        formData.append('emotion', document.getElementById('emotion').value);
+        formData.append('audioFile', audioBlob, 'diary.webm');
+
+        try {
+            const response = await fetch('http://localhost:8080/diary/add', {
+                method: 'POST',
+                body: formData
+            });
+            const result = await response.text();
+            alert(result);
+
+            if (result.includes('成功')) {
+                document.getElementById('diaryForm').style.display = 'none';
+                document.getElementById('audioPlay').innerHTML = '';
+                document.getElementById('content').value = '';
+                loadDiaryList();
+            }
+        } catch (err) {
+            alert('上传失败，请检查后端服务！');
+            console.error(err);
+        }
+    });
+
+    // 加载日记列表
+    async function loadDiaryList() {
+        const listDom = document.getElementById('diaryList');
+        listDom.innerHTML = '<p>加载中...</p>';
+
+        try {
+            const response = await fetch(`http://localhost:8080/diary/list?userId=${userId}`);
+            const diaryList = await response.json();
+
+            if (diaryList.length === 0) {
+                listDom.innerHTML = '<p>还没有写过日记哦，快去记录第一条吧~</p>';
+                return;
+            }
+
+            const emotionMap = {
+                '开心': { className: 'emotion-happy', text: '开心' },
+                '难过': { className: 'emotion-sad', text: '难过' },
+                '焦虑': { className: 'emotion-anxious', text: '焦虑' },
+                '平静': { className: 'emotion-calm', text: '平静' }
+            };
+
+            // 先拼接完整 HTML 再一次性设置，避免 innerHTML += 反复销毁重建 DOM
+            let html = '';
+            for (let i = 0; i < diaryList.length; i++) {
+                const diary = diaryList[i];
+                const emotion = emotionMap[diary.emotion] || { className: 'emotion-calm', text: diary.emotion };
+                const audioTag = diary.audioUrl
+                    ? `<audio controls src="${diary.audioUrl}" style="width: 100%;"
+                        onerror="console.error('[音频加载失败] src=', this.src); this.nextElementSibling.style.display='block';"
+                        onloadedmetadata="console.log('[音频加载成功] duration=', this.duration, 's src=', this.src);"
+                        onloadstart="console.log('[音频开始加载] src=', this.src);"></audio>
+                        <span style="display:none;color:#ff4757;font-size:12px;">⚠️ 音频加载失败，可能文件不存在或格式不支持</span>`
+                    : '<p style="color:#999;font-size:12px;">(无音频)</p>';
+
+                html += `
+                <div class="diary-item" data-diary-id="${diary.id}">
+                    <div class="diary-header">
+                        <span class="diary-time">${diary.createTime || '未知时间'}</span>
+                        <span class="emotion-tag ${emotion.className}">${emotion.text}</span>
+                    </div>
+                    <p class="diary-content">${diary.content}</p>
+                    ${audioTag}
+                    <button class="delete-btn" onclick="deleteDiary(${diary.id})">删除</button>
+                </div>
+                `;
+            }
+            listDom.innerHTML = html;
+        } catch (err) {
+            listDom.innerHTML = '<p>加载失败，请检查后端服务！</p>';
+            console.error('[日记列表] 加载失败:', err);
+        }
+    }
+
+    // 删除日记
+    async function deleteDiary(id) {
+        if (!confirm('确定要删除这条日记吗？删除后无法恢复哦~')) return;
+
+        try {
+            const response = await fetch('http://localhost:8080/diary/delete', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                },
+                body: `id=${id}&userId=${userId}`
+            });
+            const result = await response.text();
+            alert(result);
+            loadDiaryList();
+        } catch (err) {
+            alert('删除失败！');
+            console.error(err);
+        }
+    }
+
+    loadDiaryList();
+</script>
+</body>
+</html>
